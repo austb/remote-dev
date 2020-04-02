@@ -1,0 +1,6 @@
+groups:
+  - name: vmpooler
+    targets:
+      -  unchanged-scare.delivery.puppetlabs.net
+    config:
+      transport: ssh

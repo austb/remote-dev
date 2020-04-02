@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+puppet_collection=puppet6
+puppetdb_version=latest
+puppetserver_version=latest
+puppet_version=latest
+os="centos-7-x86_64"
+
+declare -A known_mappings
+known_mappings["centos-6-x86_64"]="-1.el6"
+known_mappings["centos-7-x86_64"]="-1.el7"
+known_mappings["centos-8-x86_64"]="-1.el8"
+known_mappings["redhat-6-x86_64"]="-1.el6"
+known_mappings["redhat-7-x86_64"]="-1.el7"
+known_mappings["redhat-8-x86_64"]="-1.el8"
+known_mappings["ubuntu-1404-x86_64"]="-1trusty"
+known_mappings["ubuntu-1604-x86_64"]="-1xenial"
+known_mappings["ubuntu-1804-x86_64"]="-1bionic"
+
+function printerr {
+  echo "$@" >&2
+}
+
+function usage {
+  cat <<USAGE
+Usage: foss-master [OPTIONS]
+    --os          OS             the vmfloaty instance to get (default: $os)
+    --collection  COLLECTION     the Puppet Platform to install (default: $puppet_collection)
+    --pdbver      VERSION        the PuppetDB version to install (default: $puppetdb_version)
+USAGE
+}
+
+function misuse {
+  usage >&2
+  exit 2
+}
+
+while test $# -gt 0; do
+  case "$1" in
+    --os)
+      shift
+      test $# -gt 0 || misuse
+      os="$1"
+      shift
+      ;;
+    --collection)
+      shift
+      test $# -gt 0 || misuse
+      puppet_collection="$1"
+      shift
+      ;;
+    --pdbver)
+      shift
+      test $# -gt 0 || misuse
+      puppetdb_version="$1"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+        misuse
+  esac
+done
+
+if test -z "${known_mappings[$os]:-}"; then
+  printerr "No known version mapping for system '$os'"
+  exit 2
+fi
+
+if test "$puppetdb_version" != latest; then
+  puppetdb_version="$puppetdb_version${known_mappings[$os]}"
+fi
+
+
+function floaty_get_hostname {
+  floaty get --json "$os" | jq -r ".[\"$os\"][0]"
+}
+
+host="$(floaty_get_hostname)"
+
+bolt plan run dev::foss_master \
+  --targets "$host" \
+  collection="$puppet_collection" \
+  puppetdb_version="$puppetdb_version"
+
+printf "Open Source Puppet Master successfully setup on $host\n"

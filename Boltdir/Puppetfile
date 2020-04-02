@@ -1,0 +1,15 @@
+
+# Modules from the Forge
+
+# Modules needed for PuppetDB
+mod 'puppetlabs-puppetdb', '7.4.0'
+mod 'puppetlabs-firewall', '2.3.0'
+mod 'puppetlabs-inifile', '3.1.0'
+mod 'puppetlabs-translate', '2.2.0'
+mod 'puppetlabs-postgresql', '6.4.0'
+mod 'puppetlabs-apt', '7.4.1'
+mod 'puppetlabs-concat', '6.2.0'
+mod 'puppetlabs-stdlib', '6.2.0'
+
+# Miscellaneous
+mod 'puppetlabs-package', '1.1.0'

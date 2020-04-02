@@ -1,0 +1,69 @@
+plan dev::foss_master(
+  TargetSpec $targets,
+  Optional[String] $collection = "puppet6",
+  Optional[String] $puppetdb_version = "latest",
+) {
+  get_targets($targets).each |$target| {
+    run_task('puppet_agent::install', $target,
+                             collection => $collection)
+    run_task('package', $target, name   => 'puppetserver',
+                                 action => 'install')
+    run_task('service', $target, name   => 'puppetserver',
+                                 action => 'start')
+
+    run_command('/opt/puppetlabs/bin/puppet config set server "$(/opt/puppetlabs/bin/facter fqdn)"', $target)
+    run_command('/opt/puppetlabs/bin/puppet module install puppetlabs-puppetdb', $target)
+    run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
+
+    run_command("/opt/puppetlabs/bin/puppet apply <<'EOF'
+class { 'puppetdb::globals':
+  version => '$puppetdb_version',
+}
+
+class { 'puppetdb':
+  database_host           => \$trusted['certname'],
+  database_listen_address => '*',
+  jdbc_ssl_properties     => '?ssl=true&sslrootcert=/etc/puppetlabs/puppetdb/ssl/ca.pem',
+}
+
+class { 'puppetdb::master::config':
+  manage_report_processor => true,
+  enable_reports          => true,
+}
+
+file {'postgres private key':
+  ensure  => present,
+  path    => \"\${postgresql::params::datadir}/server.key\",
+  source  => \"file:///etc/puppetlabs/puppet/ssl/private_keys/\${trusted['certname']}.pem\",
+  owner   => 'postgres',
+  mode    => '0600',
+  require => Package['postgresql-server'],
+}
+
+concat {'postgres cert bundle':
+  ensure  => present,
+  path    => \"\${postgresql::params::datadir}/server.crt\",
+  owner   => 'postgres',
+  require => Package['postgresql-server'],
+}
+
+concat::fragment {'agent cert':
+  target => 'postgres cert bundle',
+  source => \"file:///etc/puppetlabs/puppet/ssl/certs/\${trusted['certname']}.pem\",
+  order  => '1',
+}
+
+concat::fragment {'CA bundle':
+  target => 'postgres cert bundle',
+  source => 'file:///etc/puppetlabs/puppet/ssl/certs/ca.pem',
+  order  => '2',
+}
+
+postgresql::server::config_entry {'ssl':
+  ensure  => present,
+  value   => 'on',
+  require => [File['postgres private key'], Concat['postgres cert bundle']],
+}
+EOF", $target)
+  }
+}

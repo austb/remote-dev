@@ -7,6 +7,7 @@ puppetdb_version=latest
 puppetserver_version=latest
 puppet_version=latest
 os="centos-7-x86_64"
+pdb_upgrade_version=
 
 declare -A known_mappings
 known_mappings["centos-6-x86_64"]="-1.el6"
@@ -26,9 +27,10 @@ function printerr {
 function usage {
   cat <<USAGE
 Usage: foss-master [OPTIONS]
-    --os          OS             the vmfloaty instance to get (default: $os)
-    --collection  COLLECTION     the Puppet Platform to install (default: $puppet_collection)
-    --pdbver      VERSION        the PuppetDB version to install (default: $puppetdb_version)
+    --os              OS             the vmfloaty instance to get (default: $os)
+    --collection      COLLECTION     the Puppet Platform to install (default: $puppet_collection)
+    --pdbver          VERSION        the PuppetDB version to install (default: $puppetdb_version)
+    --upgrade-pdbver  VERSION        the puppetdb version to upgrade to after install (default: ${pdb_upgrade_version:-<none>})
 USAGE
 }
 
@@ -55,6 +57,12 @@ while test $# -gt 0; do
       shift
       test $# -gt 0 || misuse
       puppetdb_version="$1"
+      shift
+      ;;
+    --upgrade-pdbver)
+      shift
+      test $# -gt 0 || misuse
+      pdb_upgrade_version="$1"
       shift
       ;;
     -h|--help)
@@ -88,3 +96,15 @@ bolt plan run dev::foss_master \
   puppetdb_version="$puppetdb_version"
 
 printf "Open Source Puppet Master successfully setup on $host\n"
+
+# TODO: make this upgrade step work for all platforms
+if test ! -z "$pdb_upgrade_version"; then
+  printf "Upgrading PuppetDB to $pdb_upgrade_version\n"
+  bolt command run \
+    --targets "$host" \
+    "wget https://builds.delivery.puppetlabs.net/puppetdb/$pdb_upgrade_version/artifacts/el/7/$puppet_collection/x86_64/puppetdb-${pdb_upgrade_version%%.SNAPSHOT*}-0.1SNAPSHOT${pdb_upgrade_version##*SNAPSHOT}.el7.noarch.rpm -O /tmp/pdb-$pdb_upgrade_version"
+
+  bolt command run \
+    --targets "$host" \
+    "rpm -Uvh /tmp/pdb-$pdb_upgrade_version"
+fi

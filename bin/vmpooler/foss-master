@@ -6,7 +6,7 @@ puppet_collection=puppet6
 puppetdb_version=latest
 puppetserver_version=latest
 puppet_version=latest
-os="centos-7-x86_64"
+platform="centos-7-x86_64"
 pdb_upgrade_version=
 
 declare -A known_mappings
@@ -27,7 +27,7 @@ function printerr {
 function usage {
   cat <<USAGE
 Usage: foss-master [OPTIONS]
-    --os              OS             the vmfloaty instance to get (default: $os)
+    --platform        PLATFORM       the vmfloaty instance to get (default: $platform)
     --collection      COLLECTION     the Puppet Platform to install (default: $puppet_collection)
     --pdbver          VERSION        the PuppetDB version to install (default: $puppetdb_version)
     --upgrade-pdbver  VERSION        the puppetdb version to upgrade to after install (default: ${pdb_upgrade_version:-<none>})
@@ -41,10 +41,10 @@ function misuse {
 
 while test $# -gt 0; do
   case "$1" in
-    --os)
+    --platform)
       shift
       test $# -gt 0 || misuse
-      os="$1"
+      platform="$1"
       shift
       ;;
     --collection)
@@ -74,18 +74,18 @@ while test $# -gt 0; do
   esac
 done
 
-if test -z "${known_mappings[$os]:-}"; then
-  printerr "No known version mapping for system '$os'"
+if test -z "${known_mappings[$platform]:-}"; then
+  printerr "No known version mapping for system '$platform'"
   exit 2
 fi
 
 if test "$puppetdb_version" != latest; then
-  puppetdb_version="$puppetdb_version${known_mappings[$os]}"
+  puppetdb_version="$puppetdb_version${known_mappings[$platform]}"
 fi
 
 
 function floaty_get_hostname {
-  floaty get --json "$os" | jq -r ".[\"$os\"][0]"
+  floaty get --json "$platform" | jq -r ".[\"$platform\"][0]"
 }
 
 host="$(floaty_get_hostname)"

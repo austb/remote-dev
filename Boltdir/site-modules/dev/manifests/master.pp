@@ -3,6 +3,7 @@
 # storage from puppet agent run.
 class dev::master (
   String $puppetdb_version,
+  String $puppet_confdir,
 ) {
   class { 'puppetdb::globals':
     version => $puppetdb_version,
@@ -17,6 +18,9 @@ class dev::master (
   class { 'puppetdb::master::config':
     manage_report_processor => true,
     enable_reports          => true,
+    strict_validation       => false,
+    puppet_confdir          => $puppet_confdir,
+    puppet_conf             => "${puppet_confdir}/puppet.conf",
   }
 
   file {'postgres private key':

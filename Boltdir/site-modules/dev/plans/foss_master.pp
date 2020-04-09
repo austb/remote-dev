@@ -30,10 +30,14 @@ plan dev::foss_master(
   # Run puppet agent to ensure proper setup and signed certs
   run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
 
+  # Lookup the puppet confdir, use printf to let Bash expansion drop the newline
+  $result = run_command('printf $(/opt/puppetlabs/bin/puppet config print confdir)', $target)
+
   $target.apply_prep
   apply($target) {
     class { 'dev::master':
       puppetdb_version => $puppetdb_version,
+      puppet_confdir   => $result.first.value['stdout'],
     }
   }
 }

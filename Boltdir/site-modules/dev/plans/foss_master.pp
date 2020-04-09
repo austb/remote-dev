@@ -1,21 +1,21 @@
 plan dev::foss_master(
-  TargetSpec $targets,
+  Variant[Target,String] $master,
   Optional[String] $collection = "puppet6",
   Optional[String] $puppetdb_version = "latest",
 ) {
-  get_targets($targets).each |$target| {
-    run_task('puppet_agent::install', $target,
-                             collection => $collection)
-    run_task('package', $target, name   => 'puppetserver',
-                                 action => 'install')
-    run_task('service', $target, name   => 'puppetserver',
-                                 action => 'start')
+  $target = get_targets($master)[0]
+  run_task('puppet_agent::install', $target,
+                           collection => $collection)
+  run_task('package', $target, name   => 'puppetserver',
+                               action => 'install')
+  run_task('service', $target, name   => 'puppetserver',
+                               action => 'start')
 
-    run_command('/opt/puppetlabs/bin/puppet config set server "$(/opt/puppetlabs/bin/facter fqdn)"', $target)
-    run_command('/opt/puppetlabs/bin/puppet module install puppetlabs-puppetdb', $target)
-    run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
+  run_command('/opt/puppetlabs/bin/puppet config set server "$(/opt/puppetlabs/bin/facter fqdn)"', $target)
+  run_command('/opt/puppetlabs/bin/puppet module install puppetlabs-puppetdb', $target)
+  run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
 
-    run_command("/opt/puppetlabs/bin/puppet apply <<'EOF'
+  run_command("/opt/puppetlabs/bin/puppet apply <<'EOF'
 class { 'puppetdb::globals':
   version => '$puppetdb_version',
 }
@@ -77,5 +77,4 @@ postgresql::server::config_entry {'ssl':
   require => [File['postgres private key'], Concat['postgres cert bundle']],
 }
 EOF", $target)
-  }
 }

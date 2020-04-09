@@ -59,6 +59,18 @@ concat::fragment {'CA bundle':
   order  => '2',
 }
 
+postgresql::server::config_entry {'ssl_key_file':
+  ensure  => present,
+  value   => \"\${postgresql::params::datadir}/server.key\",
+  require => [File['postgres private key'], Concat['postgres cert bundle']],
+}
+
+postgresql::server::config_entry {'ssl_cert_file':
+  ensure  => present,
+  value   => \"\${postgresql::params::datadir}/server.crt\",
+  require => [File['postgres private key'], Concat['postgres cert bundle']],
+}
+
 postgresql::server::config_entry {'ssl':
   ensure  => present,
   value   => 'on',

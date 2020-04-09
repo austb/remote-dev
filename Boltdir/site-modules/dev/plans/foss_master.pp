@@ -4,15 +4,24 @@ plan dev::foss_master(
   Optional[String] $puppetdb_version = "latest",
 ) {
   $target = get_targets($master)[0]
+
+  # Install the Puppet Platform repo and puppet-agent
   run_task('puppet_agent::install', $target,
                            collection => $collection)
+
+  # Install and start puppetserver
   run_task('package', $target, name   => 'puppetserver',
                                action => 'install')
   run_task('service', $target, name   => 'puppetserver',
                                action => 'start')
 
+  # Configure the fqdn for the master
   run_command('/opt/puppetlabs/bin/puppet config set server "$(/opt/puppetlabs/bin/facter fqdn)"', $target)
+
+  # Install PuppetDB module for availability during puppet apply
   run_command('/opt/puppetlabs/bin/puppet module install puppetlabs-puppetdb', $target)
+
+  # Run puppet agent to ensure proper setup and signed certs
   run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
 
   run_command("/opt/puppetlabs/bin/puppet apply <<'EOF'

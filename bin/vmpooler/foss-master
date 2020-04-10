@@ -75,8 +75,24 @@ while test $# -gt 0; do
 done
 
 if test -z "${known_mappings[$platform]:-}"; then
-  printerr "No known version mapping for system '$platform'"
-  exit 2
+  case "$platform" in
+    centos[0-9])
+      version="${platform#centos}"
+      platform="centos-$version-x86_64"
+      ;;
+    redhat[0-9])
+      version="${platform#redhat}"
+      platform="redhat-$version-x86_64"
+      ;;
+    ubuntu[0-9][0-9])
+      version="${platform#ubuntu}"
+      platform="ubuntu-${version}04-x86_64"
+      ;;
+    *)
+      printerr "No known version mapping for system '$platform'"
+      exit 2
+      ;;
+  esac
 fi
 
 if test "$puppetdb_version" != latest; then

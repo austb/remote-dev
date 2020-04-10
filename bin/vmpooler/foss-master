@@ -21,7 +21,7 @@ known_mappings["ubuntu-1604-x86_64"]="-1xenial"
 known_mappings["ubuntu-1804-x86_64"]="-1bionic"
 
 function printerr {
-  echo "$@" >&2
+  printf "$@\n" >&2
 }
 
 function usage {
@@ -111,16 +111,65 @@ bolt plan run dev::foss_master \
   collection="$puppet_collection" \
   puppetdb_version="$puppetdb_version"
 
-printf "Open Source Puppet Master successfully setup on $host\n"
+printerr "Open Source Puppet Master successfully setup on $host"
 
-# TODO: make this upgrade step work for all platforms
-if test ! -z "$pdb_upgrade_version"; then
-  printf "Upgrading PuppetDB to $pdb_upgrade_version\n"
+function upgrade_el {
+  if test $# -ne 1; then
+    printerr "Wrong number of arguments to upgrade_el $#"
+    exit 2
+  fi
+
+  version="$1"
   bolt command run \
     --targets "$host" \
-    "wget https://builds.delivery.puppetlabs.net/puppetdb/$pdb_upgrade_version/artifacts/el/7/$puppet_collection/x86_64/puppetdb-${pdb_upgrade_version%%.SNAPSHOT*}-0.1SNAPSHOT${pdb_upgrade_version##*SNAPSHOT}.el7.noarch.rpm -O /tmp/pdb-$pdb_upgrade_version"
+    "wget https://builds.delivery.puppetlabs.net/puppetdb/$pdb_upgrade_version/artifacts/el/$version/$puppet_collection/x86_64/puppetdb-${pdb_upgrade_version%%.SNAPSHOT*}-0.1SNAPSHOT${pdb_upgrade_version##*SNAPSHOT}.el$version.noarch.rpm -O /tmp/pdb-$pdb_upgrade_version"
 
   bolt command run \
     --targets "$host" \
     "rpm -Uvh /tmp/pdb-$pdb_upgrade_version"
+}
+
+function upgrade_ubuntu {
+  if test $# -ne 1; then
+    printerr "Wrong number of arguments to upgrade_el $#"
+    exit 2
+  fi
+
+  codename="$1"
+  bolt command run \
+    --targets "$host" \
+    "wget https://builds.delivery.puppetlabs.net/puppetdb/$pdb_upgrade_version/artifacts/deb/$codename/$puppet_collection/puppetdb_${pdb_upgrade_version%%.SNAPSHOT*}-0.1SNAPSHOT${pdb_upgrade_version##*SNAPSHOT}${codename}_all.deb -O /tmp/pdb-$pdb_upgrade_version"
+
+  bolt command run \
+    --targets "$host" \
+    "dpkg -i --force-confold /tmp/pdb-$pdb_upgrade_version"
+}
+
+
+if test ! -z "$pdb_upgrade_version"; then
+  printerr "Upgrading PuppetDB to $pdb_upgrade_version"
+  case "$platform" in
+    centos-6-x86_64|redhat-6-x86_64)
+      upgrade_el 6
+      ;;
+    centos-7-x86_64|redhat-7-x86_64)
+      upgrade_el 7
+      ;;
+    centos-8-x86_64|redhat-8-x86_64)
+      upgrade_el 8
+      ;;
+    ubuntu-1404-x86_64)
+      upgrade_ubuntu trusty
+      ;;
+    ubuntu-1604-x86_64)
+      upgrade_ubuntu xenial
+      ;;
+    ubuntu-1804-x86_64)
+      upgrade_ubuntu bionic
+      ;;
+    *)
+      printerr "Don't know how to upgrade PuppetDB on platform: '$platform'"
+      exit 2
+      ;;
+  esac
 fi

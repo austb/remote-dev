@@ -8,6 +8,7 @@ puppetserver_version=latest
 puppet_version=latest
 platform="centos-7-x86_64"
 pdb_upgrade_version=
+test_file=
 
 declare -A known_mappings
 known_mappings["centos-6-x86_64"]="-1.el6"
@@ -31,6 +32,7 @@ Usage: foss-master [OPTIONS]
     --collection      COLLECTION     the Puppet Platform to install (default: $puppet_collection)
     --pdbver          VERSION        the PuppetDB version to install (default: $puppetdb_version)
     --upgrade-pdbver  VERSION        the puppetdb version to upgrade to after install (default: ${pdb_upgrade_version:-<none>})
+    --test            FILE           a test script to run after install/upgrade (default: ${test_file:-<none>})
 USAGE
 }
 
@@ -63,6 +65,12 @@ while test $# -gt 0; do
       shift
       test $# -gt 0 || misuse
       pdb_upgrade_version="$1"
+      shift
+      ;;
+    --test)
+      shift
+      test $# -gt 0 || misuse
+      test_file="$1"
       shift
       ;;
     -h|--help)
@@ -146,6 +154,7 @@ function upgrade_ubuntu {
 }
 
 
+# Optionally upgrade PuppetDB to a SNAPSHOT build
 if test ! -z "$pdb_upgrade_version"; then
   printerr "Upgrading PuppetDB to $pdb_upgrade_version"
   case "$platform" in
@@ -172,4 +181,10 @@ if test ! -z "$pdb_upgrade_version"; then
       exit 2
       ;;
   esac
+fi
+
+# Optionally run a post install/upgrade test
+if test ! -z "$test_file"; then
+  printerr "Running test script $test_file"
+  bolt script run --targets "$host" "$test_file"
 fi

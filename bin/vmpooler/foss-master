@@ -107,7 +107,7 @@ function floaty_get_hostname {
 host="$(floaty_get_hostname)"
 
 bolt plan run dev::foss_master \
-  master="$host"
+  master="$host" \
   collection="$puppet_collection" \
   puppetdb_version="$puppetdb_version"
 

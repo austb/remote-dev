@@ -20,6 +20,7 @@ known_mappings["redhat-8-x86_64"]="-1.el8"
 known_mappings["ubuntu-1404-x86_64"]="-1trusty"
 known_mappings["ubuntu-1604-x86_64"]="-1xenial"
 known_mappings["ubuntu-1804-x86_64"]="-1bionic"
+known_mappings["debian-10-x86_64"]="-1buster"
 
 function printerr {
   printf "$@\n" >&2
@@ -95,6 +96,10 @@ if test -z "${known_mappings[$platform]:-}"; then
     ubuntu[0-9][0-9])
       version="${platform#ubuntu}"
       platform="ubuntu-${version}04-x86_64"
+      ;;
+    debian[0-9][0-9])
+      version="${platform#debian}"
+      platform="debian-${version}-x86_64"
       ;;
     *)
       printerr "No known version mapping for system '$platform'"

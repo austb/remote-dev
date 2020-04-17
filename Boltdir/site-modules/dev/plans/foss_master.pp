@@ -2,6 +2,7 @@ plan dev::foss_master(
   Variant[Target,String] $master,
   Optional[String] $collection = "puppet6",
   Optional[String] $puppetdb_version = "latest",
+  Optional[Array[String, 1]] $autosign_whitelist,
 ) {
   $target = get_targets($master)[0]
 
@@ -24,6 +25,17 @@ plan dev::foss_master(
   # Run puppet agent to ensure proper setup and signed certs
   run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
 
+  $autosign_whitelist_content= $autosign_whitelist ? {
+    undef    => "",
+    default  => join($autosign_whitelist, "\n"),
+  }
+
+  $autosign_whitelist_ensure = $autosign_whitelist ? {
+    undef    => absent,
+    default  => file,
+  }
+
+  # TODO: allow puppet to manage the firewall, open port 8140 for puppetserver
   run_command("/opt/puppetlabs/bin/puppet apply <<'EOF'
 class { 'puppetdb::globals':
   version => '$puppetdb_version',
@@ -33,6 +45,7 @@ class { 'puppetdb':
   database_host           => \$trusted['certname'],
   database_listen_address => '*',
   jdbc_ssl_properties     => '?ssl=true&sslrootcert=/etc/puppetlabs/puppetdb/ssl/ca.pem',
+  manage_firewall         => false,
 }
 
 class { 'puppetdb::master::config':
@@ -84,6 +97,15 @@ postgresql::server::config_entry {'ssl':
   ensure  => present,
   value   => 'on',
   require => [File['postgres private key'], Concat['postgres cert bundle']],
+}
+
+file { 'puppetserver autosign whitelist':
+  ensure  => $autosign_whitelist_ensure,
+  path    => \"/etc/puppetlabs/puppet/autosign.conf\",
+  owner   => puppet,
+  group   => puppet,
+  mode    => \"0600\",
+  content => \"$autosign_whitelist_content\",
 }
 EOF", $target)
 }

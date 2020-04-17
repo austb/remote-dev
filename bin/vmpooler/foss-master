@@ -9,6 +9,7 @@ puppet_version=latest
 platform="centos-7-x86_64"
 pdb_upgrade_version=
 test_file=
+agents_to_create=0
 
 declare -A known_mappings
 known_mappings["centos-6-x86_64"]="-1.el6"
@@ -33,7 +34,8 @@ Usage: foss-master [OPTIONS]
     --collection      COLLECTION     the Puppet Platform to install (default: $puppet_collection)
     --pdbver          VERSION        the PuppetDB version to install (default: $puppetdb_version)
     --upgrade-pdbver  VERSION        the puppetdb version to upgrade to after install (default: ${pdb_upgrade_version:-<none>})
-    --test            FILE           a test script to run after install/upgrade (default: ${test_file:-<none>})
+    --agents          NUMBER         create agents and connect them to the master (default: $agents_to_create)
+    --test            FILE           a test script to run on master after install, upgrade, and creation of agents (default: ${test_file:-<none>})
 USAGE
 }
 
@@ -72,6 +74,12 @@ while test $# -gt 0; do
       shift
       test $# -gt 0 || misuse
       test_file="$1"
+      shift
+      ;;
+    --agents)
+      shift
+      test $# -gt 0 || misuse
+      agents_to_create="$1"
       shift
       ;;
     -h|--help)
@@ -117,14 +125,15 @@ function floaty_get_hostname {
   floaty get --json "$platform" | jq -r ".[\"$platform\"][0]"
 }
 
-host="$(floaty_get_hostname)"
+master_host="$(floaty_get_hostname)"
 
 bolt plan run dev::foss_master \
-  master="$host" \
+  master="$master_host" \
   collection="$puppet_collection" \
-  puppetdb_version="$puppetdb_version"
+  puppetdb_version="$puppetdb_version" \
+  autosign_whitelist='["*.delivery.puppetlabs.net"]'
 
-printerr "Open Source Puppet Master successfully setup on $host"
+printerr "Open Source Puppet Master successfully setup on $master_host"
 
 function upgrade_el {
   if test $# -ne 1; then
@@ -134,11 +143,11 @@ function upgrade_el {
 
   version="$1"
   bolt command run \
-    --targets "$host" \
+    --targets "$master_host" \
     "wget https://builds.delivery.puppetlabs.net/puppetdb/$pdb_upgrade_version/artifacts/el/$version/$puppet_collection/x86_64/puppetdb-${pdb_upgrade_version%%.SNAPSHOT*}-0.1SNAPSHOT${pdb_upgrade_version##*SNAPSHOT}.el$version.noarch.rpm -O /tmp/pdb-$pdb_upgrade_version"
 
   bolt command run \
-    --targets "$host" \
+    --targets "$master_host" \
     "rpm -Uvh /tmp/pdb-$pdb_upgrade_version"
 }
 
@@ -150,11 +159,11 @@ function upgrade_ubuntu {
 
   codename="$1"
   bolt command run \
-    --targets "$host" \
+    --targets "$master_host" \
     "wget https://builds.delivery.puppetlabs.net/puppetdb/$pdb_upgrade_version/artifacts/deb/$codename/$puppet_collection/puppetdb_${pdb_upgrade_version%%.SNAPSHOT*}-0.1SNAPSHOT${pdb_upgrade_version##*SNAPSHOT}${codename}_all.deb -O /tmp/pdb-$pdb_upgrade_version"
 
   bolt command run \
-    --targets "$host" \
+    --targets "$master_host" \
     "dpkg -i --force-confold /tmp/pdb-$pdb_upgrade_version"
 }
 
@@ -188,8 +197,34 @@ if test ! -z "$pdb_upgrade_version"; then
   esac
 fi
 
+if test "$agents_to_create" -gt 0; then
+  declare -a agents
+  for i in $(seq "$agents_to_create"); do
+    # TODO: floaty get can get multiple servers at once
+    agents[$i]="$(floaty_get_hostname)"
+  done
+
+  function join_by {
+    local IFS="$1"
+    shift
+    printf "$*"
+  }
+
+  agent_list="$(join_by , ${agents[@]})"
+
+  bolt task run puppet_agent::install \
+    --targets "$agent_list" \
+    collection="$puppet_collection"
+
+  bolt command run "/opt/puppetlabs/bin/puppet config set server $master_host" \
+    --targets "$agent_list"
+
+  bolt command run '/opt/puppetlabs/bin/puppet agent -t' \
+    --targets "$agent_list"
+fi
+
 # Optionally run a post install/upgrade test
 if test ! -z "$test_file"; then
   printerr "Running test script $test_file"
-  bolt script run --targets "$host" "$test_file"
+  bolt script run --targets "$master_host" "$test_file"
 fi

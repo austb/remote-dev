@@ -35,7 +35,6 @@ plan dev::foss_master(
     default  => file,
   }
 
-  # TODO: allow puppet to manage the firewall, open port 8140 for puppetserver
   run_command("/opt/puppetlabs/bin/puppet apply <<'EOF'
 class { 'puppetdb::globals':
   version => '$puppetdb_version',
@@ -45,7 +44,6 @@ class { 'puppetdb':
   database_host           => \$trusted['certname'],
   database_listen_address => '*',
   jdbc_ssl_properties     => '?ssl=true&sslrootcert=/etc/puppetlabs/puppetdb/ssl/ca.pem',
-  manage_firewall         => false,
 }
 
 class { 'puppetdb::master::config':
@@ -106,6 +104,12 @@ file { 'puppetserver autosign whitelist':
   group   => puppet,
   mode    => \"0600\",
   content => \"$autosign_whitelist_content\",
+}
+
+firewall { '8140 accept - puppetserver':
+  dport  => 8140,
+  proto  => 'tcp',
+  action => 'accept',
 }
 EOF", $target)
 }

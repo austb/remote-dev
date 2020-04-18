@@ -120,12 +120,25 @@ if test "$puppetdb_version" != latest; then
   puppetdb_version="$puppetdb_version${known_mappings[$platform]}"
 fi
 
-
-function floaty_get_hostname {
-  floaty get --json "$platform" | jq -r ".[\"$platform\"][0]"
+function floaty_get {
+  test $# -eq 1 || ( printerr 'Must provide one argument to floaty_get'; exit 2 )
+  floaty get --json "$platform=$1"
 }
 
-master_host="$(floaty_get_hostname)"
+function get_hostname {
+  jsonfile="$1"
+  n="$2"
+  jq -r ".[\"$platform\"][$n]" <"$jsonfile"
+}
+
+tmpfile="$(mktemp)"
+trap 'rm "$tmpfile"' EXIT
+
+# Get all vms at once, the at index 0 will be the master
+# any others will be agents
+floaty_get "$(($agents_to_create + 1))" > "$tmpfile"
+
+master_host="$(get_hostname "$tmpfile" 0)"
 
 bolt plan run dev::foss_master \
   master="$master_host" \
@@ -200,8 +213,9 @@ fi
 if test "$agents_to_create" -gt 0; then
   declare -a agents
   for i in $(seq "$agents_to_create"); do
-    # TODO: floaty get can get multiple servers at once
-    agents[$i]="$(floaty_get_hostname)"
+    # index 0 is the master, so take index 1 and on as agents
+    # seq starts at 1
+    agents["$((i - 1))"]="$(get_hostname "$tmpfile" "$i")"
   done
 
   function join_by {

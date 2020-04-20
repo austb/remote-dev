@@ -233,7 +233,7 @@ if test "$agents_to_create" -gt 0; then
   bolt command run "/opt/puppetlabs/bin/puppet config set server $master_host" \
     --targets "$agent_list"
 
-  bolt command run '/opt/puppetlabs/bin/puppet agent -t' \
+  bolt command run '/opt/puppetlabs/bin/puppet agent --onetime --verbose --no-daemonize --no-usecacheonfailure --no-splay --show_diff' \
     --targets "$agent_list"
 fi
 

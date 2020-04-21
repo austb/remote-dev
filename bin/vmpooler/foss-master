@@ -10,6 +10,7 @@ platform="centos-7-x86_64"
 pdb_upgrade_version=
 test_file=
 agents_to_create=0
+default_modules=
 
 declare -A known_mappings
 known_mappings["centos-6-x86_64"]="-1.el6"
@@ -36,6 +37,7 @@ Usage: foss-master [OPTIONS]
     --upgrade-pdbver  VERSION        the puppetdb version to upgrade to after install (default: ${pdb_upgrade_version:-<none>})
     --agents          NUMBER         create agents and connect them to the master (default: $agents_to_create)
     --test            FILE           a test script to run on master after install, upgrade, and creation of agents (default: ${test_file:-<none>})
+    --modules         MODULES        modules to include in the puppet infrastructure, comma separated (default: ${modules:-<none>})
 USAGE
 }
 
@@ -80,6 +82,12 @@ while test $# -gt 0; do
       shift
       test $# -gt 0 || misuse
       agents_to_create="$1"
+      shift
+      ;;
+    --modules)
+      shift
+      test $# -gt 0 || misuse
+      default_modules="$1"
       shift
       ;;
     -h|--help)
@@ -144,7 +152,8 @@ bolt plan run dev::foss_master \
   master="$master_host" \
   collection="$puppet_collection" \
   puppetdb_version="$puppetdb_version" \
-  autosign_whitelist='["*.delivery.puppetlabs.net"]'
+  autosign_whitelist='["*.delivery.puppetlabs.net"]' \
+  default_modules="$default_modules"
 
 printerr "Open Source Puppet Master successfully setup on $master_host"
 

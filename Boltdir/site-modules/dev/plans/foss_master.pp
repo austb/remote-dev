@@ -3,6 +3,7 @@ plan dev::foss_master(
   Optional[String] $collection = "puppet6",
   Optional[String] $puppetdb_version = "latest",
   Optional[Array[String, 1]] $autosign_whitelist,
+  Optional[String] $default_modules = '',
 ) {
   $target = get_targets($master)[0]
 
@@ -22,6 +23,12 @@ plan dev::foss_master(
   # Install PuppetDB module for availability during puppet apply
   run_command('/opt/puppetlabs/bin/puppet module install puppetlabs-puppetdb', $target)
 
+  unless $default_modules == '' {
+    $default_modules.split(',').each | String $module | {
+      run_command("/opt/puppetlabs/bin/puppet module install $module", $target)
+    }
+  }
+
   # Run puppet agent to ensure proper setup and signed certs
   run_command('/opt/puppetlabs/bin/puppet agent -t', $target)
 
@@ -37,6 +44,13 @@ plan dev::foss_master(
     default  => join($autosign_whitelist, "\n"),
   }
 
+  $include_statement = $default_modules == '' ? {
+    true    => '',
+    default => $default_modules.split(',').map |String $module| {
+      "include ${module.split('-')[1]}"
+    }.join("\n  ")
+  }
+
   # Set the hiera data for the master's profile
   run_command('mkdir -p /etc/puppetlabs/code/environments/production/data/nodes', $target)
   run_command("cat >> '/etc/puppetlabs/code/environments/production/data/nodes/$master.yaml' <<EOF
@@ -49,10 +63,11 @@ EOF", $target)
   run_command("cat >> /etc/puppetlabs/code/environments/production/manifests/site.pp <<EOF
 node '$master' {
   include 'profile::master'
+  $include_statement
 }
 
 node default {
-
+  $include_statement
 }
 EOF", $target)
 

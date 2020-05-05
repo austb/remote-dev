@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Insert a migration that existed before PuppetDB 4.0.0
+su - postgres -s /bin/sh -c "psql puppetdb -c 'INSERT INTO schema_migrations (version, time) VALUES (1, NOW());'"
+
+# Restart puppetdb to ensure it can start
+service puppetdb restart

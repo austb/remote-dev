@@ -2,6 +2,4 @@
 
 puppet agent -t
 
-curl -X POST http://localhost:8080/pdb/query/v4 \
-  -H 'Content-Type:application/json' \
-  -d '{"query": "reports[count(certname)] { }", "pretty": true}'
+puppet query 'reports[count(certname)] { }'

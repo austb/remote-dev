@@ -72,4 +72,18 @@ node default {
 EOF", $target)
 
   run_command("/opt/puppetlabs/bin/puppet agent --onetime --verbose --no-daemonize --no-usecacheonfailure --no-splay --show_diff", $target)
+
+  # Install and configure the puppetdb cli
+  run_command("/opt/puppetlabs/puppet/bin/gem install --bindir /opt/puppetlabs/bin puppetdb_cli", $target)
+
+  run_command('mkdir -p $HOME/.puppetlabs/client-tools/; fqdn="$(facter fqdn)"; cat > "$HOME/.puppetlabs/client-tools/puppetdb.conf" <<EOF
+{
+  "puppetdb": {
+    "server_urls": "https://$fqdn:8081",
+    "cacert": "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
+    "cert": "/etc/puppetlabs/puppet/ssl/certs/$fqdn.pem",
+    "key": "/etc/puppetlabs/puppet/ssl/private_keys/$fqdn.pem"
+  }
+}
+EOF', $target)
 }

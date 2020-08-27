@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+
+set -e
+
+orch_db_name="pe-orchestrator"
+pg_port=5432
+pg_user=pe-postgres
+psql_cmd=/opt/puppetlabs/server/bin/psql
+data_type=static
+show=no
+delete=no
+
+function printerr {
+  echo "$@" >&2
+}
+
+function usage {
+  cat <<USAGE
+Usage: value-report-demo [ACTION] [OPTION ..]
+
+ACTIONS
+    populate     populate the database with 28 days of data (default)
+    show         print the contents of the usage_counts table
+    delete       clear the usage_counts table
+
+OPTIONS
+    --data-type TYPE      NOTE: This only affects the "populate" action
+                          the type of data to put in the database (default: $data_type)
+                              allowed types are: static, increasing, random
+    --db-name NAME        the puppetdb database name (default: $orch_db_name)
+    --pg-user USER        the postgres system user (default: $pg_user)
+    --pg-port PORT        the postgres port to connect (default: $pg_port)
+    --psql    PATH        the path to the psql command (default: $psql_cmd)
+USAGE
+}
+
+function misuse {
+  usage >&2
+  exit 2
+}
+
+while test $# -gt 0; do
+  case "$1" in
+    --data-type)
+      shift
+      test $# -gt 0 || misuse
+      data_type="$1"
+      shift
+      ;;
+    --db-name)
+      shift
+      test $# -gt 0 || misuse
+      orch_db_name="$1"
+      shift
+      ;;
+    --pg-user)
+      shift
+      test $# -gt 0 || misuse
+      pg_user="$1"
+      shift
+      ;;
+    --pg-port)
+      shift
+      test $# -gt 0 || misuse
+      pg_port="$1"
+      shift
+      ;;
+    --psql)
+      shift
+      test $# -gt 0 || misuse
+      psql_cmd="$1"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    show)
+      show=yes
+      shift
+      ;;
+    delete)
+      delete_usage_counts=yes
+      shift
+      ;;
+    populate)
+      shift
+      ;;
+    *)
+        misuse
+  esac
+done
+
+if [ "$show" = yes ]; then
+  su - "$pg_user" -s /bin/sh -c "$psql_cmd -p $pg_port -d $orch_db_name -c 'SELECT * FROM usage_counts' >&2"
+  exit 0
+elif [ "$delete_usage_counts" = yes ]; then
+  su - "$pg_user" -s /bin/sh -c "$psql_cmd -p $pg_port -d $orch_db_name -c 'DELETE FROM usage_counts' >&2"
+  exit 0
+fi
+
+tmp_dir="$(mktemp -d)"
+tmp_dir="$(cd "$tmp_dir" && pwd)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+chown "$pg_user:$pg_user" "$tmp_dir"
+
+if [ "$data_type" = increasing ]; then
+  cat > "$tmp_dir/add_value_report_data.sql" <<"POPULATEDB"
+BEGIN TRANSACTION;
+
+DO $$
+BEGIN
+    FOR i IN 0..27 LOOP
+        INSERT INTO usage_counts
+          (end_period, with_agents, without_agents,
+           intentional_changes, corrective_changes,
+           tasks_node_count, plans_node_count)
+        VALUES
+          (CURRENT_DATE - 27 + i - interval '1 ms', -- end_period
+           2 * (i / 2)::integer, -- with_agents
+           (i / 2)::integer,     -- without_agents
+           2 * i,                -- intentional_changes
+           (i / 3)::integer,     -- corrective_changes
+           1 + (i / 2),          -- tasks_node_count
+           (i / 7));             -- plans_node_count
+    END LOOP;
+END $$;
+
+COMMIT TRANSACTION;
+POPULATEDB
+elif [ "$data_type" = random ]; then
+  cat > "$tmp_dir/add_value_report_data.sql" <<"POPULATEDB"
+BEGIN TRANSACTION;
+
+DO $$
+BEGIN
+    FOR i IN 0..27 LOOP
+        INSERT INTO usage_counts
+          (end_period, with_agents, without_agents,
+           intentional_changes, corrective_changes,
+           tasks_node_count, plans_node_count)
+        VALUES
+          (CURRENT_DATE - i - interval '1 ms', -- end_period
+           floor(random() * 20 + 1)::int, -- with_agents
+           floor(random() * 10 + 1)::int, -- without_agents
+           floor(random() * 20 + 1)::int, -- intentional_changes
+           floor(random() * 6 + 1)::int,  -- corrective_changes
+           floor(random() * 10 + 1)::int, -- tasks_node_count
+           floor(random() * 5 + 1)::int); -- plans_node_count
+    END LOOP;
+END $$;
+
+COMMIT TRANSACTION;
+POPULATEDB
+else
+  cat > "$tmp_dir/add_value_report_data.sql" <<"POPULATEDB"
+BEGIN TRANSACTION;
+
+DO $$
+BEGIN
+    FOR i IN 0..27 LOOP
+        INSERT INTO usage_counts
+          (end_period, with_agents, without_agents,
+           intentional_changes, corrective_changes,
+           tasks_node_count, plans_node_count)
+        VALUES
+          (CURRENT_DATE - i - interval '1 ms', -- end_period
+           20, -- with_agents
+           10, -- without_agents
+           20, -- intentional_changes
+           3,  -- corrective_changes
+           10, -- tasks_node_count
+           2); -- plans_node_count
+    END LOOP;
+END $$;
+
+COMMIT TRANSACTION;
+POPULATEDB
+fi
+
+chown "$pg_user:$pg_user" "$tmp_dir/add_value_report_data.sql"
+
+su - "$pg_user" -s /bin/sh -c "$psql_cmd -p $pg_port -d $orch_db_name -f $tmp_dir/add_value_report_data.sql >&2"

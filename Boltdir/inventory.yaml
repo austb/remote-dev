@@ -1,6 +1,12 @@
+---
 groups:
-  - name: vmpooler
-    targets:
-      -  unchanged-scare.delivery.puppetlabs.net
-    config:
-      transport: ssh
+- name: vmpooler
+  targets:
+  - unchanged-scare.delivery.puppetlabs.net
+  config:
+    transport: ssh
+config:
+  ssh:
+    user: root
+    host-key-check: false
+    private-key: "~/.ssh/vmpooler-id_rsa"

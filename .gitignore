@@ -1,3 +1,5 @@
 Boltdir/.rerun.json
-Boltdir/modules
 Boltdir/.resource_types
+Boltdir/.bolt-bak/
+Boltdir/.modules/
+Boltdir/bolt-debug.log

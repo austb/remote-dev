@@ -1,15 +1,19 @@
+# This Puppetfile is managed by Bolt. Do not edit.
+# For more information, see https://pup.pt/bolt-modules
 
-# Modules from the Forge
+# The following directive installs modules to the managed moduledir.
+moduledir '.modules'
 
-# Modules needed for PuppetDB
-mod 'puppetlabs-puppetdb', '7.4.0'
-mod 'puppetlabs-firewall', '2.3.0'
-mod 'puppetlabs-inifile', '3.1.0'
-mod 'puppetlabs-translate', '2.2.0'
-mod 'puppetlabs-postgresql', '6.4.0'
-mod 'puppetlabs-apt', '7.4.1'
-mod 'puppetlabs-concat', '6.2.0'
-mod 'puppetlabs-stdlib', '6.2.0'
-
-# Miscellaneous
-mod 'puppetlabs-package', '1.1.0'
+mod 'puppetlabs/cron_core', '1.0.3'
+mod 'puppetlabs/scheduled_task', '2.0.1'
+mod 'puppet/cron', '2.0.0'
+mod 'albatrossflavour/os_patching', '0.13.0'
+mod 'puppetlabs/package', '1.1.0'
+mod 'puppetlabs/stdlib', '5.2.0'
+mod 'puppetlabs/concat', '6.2.0'
+mod 'puppetlabs/apt', '7.4.1'
+mod 'puppetlabs/postgresql', '6.4.0'
+mod 'puppetlabs/translate', '1.2.0'
+mod 'puppetlabs/inifile', '3.1.0'
+mod 'puppetlabs/firewall', '2.3.0'
+mod 'puppetlabs/puppetdb', '7.4.0'

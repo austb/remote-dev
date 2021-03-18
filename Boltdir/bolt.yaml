@@ -1,4 +1,0 @@
-ssh:
-  user: root
-  host-key-check: false
-  private-key: ~/.ssh/vmpooler-id_rsa

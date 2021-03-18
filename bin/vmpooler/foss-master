@@ -22,6 +22,7 @@ known_mappings["redhat-8-x86_64"]="-1.el8"
 known_mappings["ubuntu-1404-x86_64"]="-1trusty"
 known_mappings["ubuntu-1604-x86_64"]="-1xenial"
 known_mappings["ubuntu-1804-x86_64"]="-1bionic"
+known_mappings["ubuntu-2004-x86_64"]="-1focal"
 known_mappings["debian-10-x86_64"]="-1buster"
 
 function printerr {
@@ -189,7 +190,6 @@ function upgrade_ubuntu {
     "dpkg -i --force-confold /tmp/pdb-$pdb_upgrade_version"
 }
 
-
 # Optionally upgrade PuppetDB to a SNAPSHOT build
 if test ! -z "$pdb_upgrade_version"; then
   printerr "Upgrading PuppetDB to $pdb_upgrade_version"
@@ -211,6 +211,9 @@ if test ! -z "$pdb_upgrade_version"; then
       ;;
     ubuntu-1804-x86_64)
       upgrade_ubuntu bionic
+      ;;
+    debian-10-x86_64)
+      upgrade_ubuntu buster
       ;;
     *)
       printerr "Don't know how to upgrade PuppetDB on platform: '$platform'"

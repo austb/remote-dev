@@ -3,3 +3,4 @@ Boltdir/.resource_types
 Boltdir/.bolt-bak/
 Boltdir/.modules/
 Boltdir/bolt-debug.log
+Boltdir/.plan_cache.json

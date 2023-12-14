@@ -1,7 +1,7 @@
 ---
 modules:
 - name: puppetlabs/puppetdb
-  version_requirement: 7.4.0
+  version_requirement: 7.9.0
 - name: puppetlabs/package
   version_requirement: 1.1.0
 - name: albatrossflavour/os_patching

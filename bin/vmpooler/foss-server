@@ -212,6 +212,9 @@ if test ! -z "$pdb_upgrade_version"; then
     ubuntu-1804-x86_64)
       upgrade_ubuntu bionic
       ;;
+    ubuntu-2004-x86_64)
+      upgrade_ubuntu focal
+      ;;
     debian-10-x86_64)
       upgrade_ubuntu buster
       ;;
